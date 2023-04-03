@@ -17,6 +17,7 @@ class TrackedValue:
             self.__boost_type, "ForceScalingFactor")
         self.__effective_harmonic_constant_name = tracked_integrator.get_variable_name_by_type(
             self.__boost_type, "k0")
+        self.__Vmax_name = tracked_integrator.get_variable_name_by_type(self.__boost_type, "Vmax")
 
     def mark_energy(self):
         if self.__boost_type == BoostType.TOTAL:
@@ -43,8 +44,13 @@ class TrackedValue:
 
     def get_reporting_effective_harmonic_constant(self):
         effective_harmonic_constants = self.__integrator.get_effective_harmonic_constants()
+        #print("HERE!", effective_harmonic_constants)
         return str(effective_harmonic_constants[self.__effective_harmonic_constant_name])
-
+    
+    def get_reporting_Vmax_values(self):
+        Vmax_values = self.__integrator.get_vmax_values()
+        #print("here!", Vmax_values)
+        return str(Vmax_values[self.__Vmax_name])
 
 class BaseGamdLogger(ABC):
     @abstractmethod
@@ -81,13 +87,14 @@ class NoOpGamdLogger(BaseGamdLogger):
 
 class GamdLogger:
 
-    def __init__(self, filename, mode, integrator, simulation,
+    def __init__(self, gamdlog, statslog, mode, integrator, simulation,
                  first_boost_type, first_boost_group,
                  second_boost_type, second_boost_group):
         """
         Parameters
         ----------
-        :param filename:           The gamd.log file path and file name.
+        :param gamdlog:            The gamd.log file path and file name.
+        :param statslog:           The stats.log file path and file name.
         :param mode:               The write mode to output the file.
         :param integrator:         The integrator from which to pull information.
         :param simulation:         The simulation from which to pull information
@@ -98,8 +105,10 @@ class GamdLogger:
 
         """
 
-        self.filename = filename
-        self.gamdLog = open(filename, mode)
+        self.gamdlogname = gamdlog
+        self.statslogname = statslog
+        self.gamdLog = open(gamdlog, mode)
+        self.statsLog = open(statslog, mode)
         self.integrator = integrator
         self.simulation = simulation
         self.tracked_values = []
@@ -117,17 +126,27 @@ class GamdLogger:
 
     def __del__(self):
         self.gamdLog.close()
+        self.statsLog.close()
 
     def close(self):
         self.gamdLog.close()
+        self.statsLog.close()
 
     def write_header(self):
         self.gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
         self.gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
         header_str = "# ntwx,total_nstep,Unboosted-{0}-Energy,Unboosted-{1}-Energy,{0}-Force-Weight,{1}-Force-Weight,{0}-Boost-Energy-Potential,{1}-Boost-Energy,{0}-Effective-Harmonic-Constant,{1}-Effective-Harmonic-Constant\n"
-        header = header_str.format(self.tracked_values[0].get_boost_type().value,
-                                   self.tracked_values[1].get_boost_type().value)
+        K0 = self.tracked_values[0].get_boost_type().value
+        K1 = self.tracked_values[1].get_boost_type().value
+        header = header_str.format(K0,K1)
         self.gamdLog.write(header)
+
+        # MDP - writing header for stats file
+        self.statsLog.write("# Gaussian accelerated Molecular Dynamics statistics file\n")
+        self.statsLog.write("# Energy terms are stored in unit of kcal/mol\n")
+        header_str = "# total_step, Vmax-{0}, Vmax-{1}, K0-{0}, K0-{1}\n"
+        header = header_str.format(K0,K1)
+        self.statsLog.write(header)
 
     def mark_energies(self):
         for tracked_value in self.tracked_values:
@@ -156,3 +175,16 @@ class GamdLogger:
                            first_effective_harmonic_constant + "\t" +
                            second_effective_harmonic_constant + "\n")
 
+
+    def write_to_stats_log(self, step):
+        first_Vmax  = self.tracked_values[0].get_reporting_Vmax_values()
+        second_Vmax = self.tracked_values[1].get_reporting_Vmax_values()
+        
+        first_effective_harmonic_constant = self.tracked_values[0].get_reporting_effective_harmonic_constant()
+        second_effective_harmonic_constant = self.tracked_values[1].get_reporting_effective_harmonic_constant()
+
+        self.statsLog.write("\t" + str(step * 1) + "\t" +
+                           first_Vmax + "\t" +
+                           second_Vmax + "\t" + 
+                           first_effective_harmonic_constant + "\t" +
+                           second_effective_harmonic_constant + "\n")

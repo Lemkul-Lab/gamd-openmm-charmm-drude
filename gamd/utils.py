@@ -25,7 +25,7 @@ def create_gamd_log(gamdLog, filename):
 
 class ExpandedStateDataReporter(StateDataReporter):
 
-    def __init__(self, system, file, reportInterval, step=False,
+    def __init__(self, system, file, reportInterval, step=True,
                  time=False, brokenOutForceEnergies=False,
                  potentialEnergy=False, kineticEnergy=False, totalEnergy=False,
                  temperature=False, volume=False, density=False,
@@ -116,7 +116,7 @@ class GamdDatReporter:
         output_string = str(step)
         values = self.tracked_values.get_values()
         for header in self.headers:
-            output_string = output_string + ", " + str(values[header])
+            output_string = output_string + "  " + str(values[header])
         return output_string
 
     class TrackedValues:

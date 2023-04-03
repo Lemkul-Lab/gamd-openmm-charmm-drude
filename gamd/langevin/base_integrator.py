@@ -581,6 +581,27 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         return effective_harmonic_constants
 
+    def get_vmax_values(self):
+        vmax_values = {
+            self._append_group_name(
+                "Vmax", BoostType.TOTAL.value): 1.0,
+                    self._append_group_name("Vmax", "Dihedral"): 1.0 }
+
+        for group_id in self.get_group_dict():
+            group_name = self.get_group_dict()[group_id]
+            var_name = self._append_group_name("Vmax",group_name)
+            var_value = self.getGlobalVariableByName(var_name)
+            vmax_values[var_name] = var_value
+
+        if (self._boost_method == BoostMethod.TOTAL or
+              self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL):
+            
+            var_name = self._append_group_name("Vmax",BoostType.TOTAL.value)
+            var_value = self.getGlobalVariableByName(var_name)
+            vmax_values[var_name] = var_value
+
+        return vmax_values
+
     def calculate_common_threshold_energy_and_effective_harmonic_constant(
             self, compute_type, group_id=None):
         self.add_compute_global_by_name("threshold_energy", "{0}", ["Vmax"],
