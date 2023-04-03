@@ -26,8 +26,8 @@ from gamd.stage_integrator import BoostType
 
 def print_force_group_information(system):
     for force in system.getForces():
-        print("Force:  ", force)
-        print("Force Group:  ", force.getForceGroup())
+        print("Force:  " + str(force) + "in group:" + str(force.getForceGroup()))
+        #print("Force Group:  ", force.getForceGroup())
 
 
 def set_all_forces_to_group(system, group):
@@ -36,18 +36,18 @@ def set_all_forces_to_group(system, group):
 
 
 def set_dihedral_group(system):
-    return set_single_group(2, 'PeriodicTorsionForce', system)
+    return set_single_group(2, ['PeriodicTorsionForce', 'CMAPTorsionForce'], system)
 
 
 def set_non_bonded_group(system):
-    return set_single_group(1, 'NonbondedForce', system)
+    return set_single_group(1, ['NonbondedForce','CustomNonbondedForce'], system)
 
 
-def set_single_group(group, name, system):
+def set_single_group(group, name_list, system):
     for force in system.getForces():
-        if force.__class__.__name__ == name:
+        if force.__class__.__name__ in name_list:
+            #print(force.__class__.__name__)
             force.setForceGroup(group)
-            break
     return group
 
 
@@ -156,7 +156,7 @@ def create_upper_non_bonded_boost_integrator(system, temperature, dt, ntcmdprep,
     return result
 
 
-def create_lower_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+def create_lower_dual_non_bonded_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
                                                             ntebprep, nteb, nstlim, ntave,
                                                             sigma0p=6.0 * unit.kilocalories_per_mole,
                                                             sigma0d=6.0 * unit.kilocalories_per_mole):
@@ -171,7 +171,7 @@ def create_lower_dual_non_bonded_dihederal_boost_integrator(system, temperature,
     return result
 
 
-def create_upper_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+def create_upper_dual_non_bonded_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
                                                             ntebprep, nteb, nstlim, ntave,
                                                             sigma0p=6.0 * unit.kilocalories_per_mole,
                                                             sigma0d=6.0 * unit.kilocalories_per_mole):
@@ -194,7 +194,12 @@ class GamdIntegratorFactory:
     @staticmethod
     def get_integrator(boost_type_str, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave,
                        sigma0p=6.0 * unit.kilocalories_per_mole, sigma0d=6.0 * unit.kilocalories_per_mole):
+        #print("BEFORE")
+        #print_force_group_information(system)
         set_all_forces_to_group(system, 0)
+        #print("AFTER")
+        #print_force_group_information(system)
+        #exit()
         result = []
         first_boost_type = BoostType.TOTAL
         second_boost_type = BoostType.DIHEDRAL
@@ -228,13 +233,13 @@ class GamdIntegratorFactory:
                                                               ntebprep, nteb, nstlim, ntave, sigma0p)
             second_boost_type = BoostType.NON_BONDED
         elif boost_type_str == "lower-dual-nonbonded-dihedral":
-            result = create_lower_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+            result = create_lower_dual_non_bonded_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
                                                                              ntebprep, nteb, nstlim, ntave, sigma0p,
                                                                              sigma0d)
             first_boost_type = BoostType.NON_BONDED
             second_boost_type = BoostType.DIHEDRAL
         elif boost_type_str == "upper-dual-nonbonded-dihedral":
-            result = create_upper_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+            result = create_upper_dual_non_bonded_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
                                                                              ntebprep, nteb, nstlim, ntave, sigma0p,
                                                                              sigma0d)
             first_boost_type = BoostType.NON_BONDED
@@ -244,4 +249,7 @@ class GamdIntegratorFactory:
 
         result.append(first_boost_type)
         result.append(second_boost_type)
+
+        #print("AFTER2")
+        #print_force_group_information(system)
         return result

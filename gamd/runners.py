@@ -209,7 +209,7 @@ class Runner:
                                               self.chunk_size, False)
         self.gamd_logger_enabled = True
         self.gamd_reweighting_logger_enabled = False
-        self.state_data_reporter_enabled = False
+        self.state_data_reporter_enabled = True
         self.gamd_dat_reporter_enabled = False
         return
 
@@ -247,9 +247,7 @@ class Runner:
             simulation.reporters.append(traj_reporter(
                 traj_name, self.config.outputs.reporting.coordinates_interval,
                 append=traj_append))
-        elif traj_reporter == openmm_app.PDBReporter:
-            simulation.reporters.append(traj_reporter(
-                traj_name, self.config.outputs.reporting.coordinates_interval))
+            simulation.reporters.append(openmm_app.StateDataReporter(sys.stdout, self.config.outputs.reporting.coordinates_interval, step=True, separator='\t\t'))
 
     def register_state_data_reporter(self, restart):
         if self.state_data_reporter_enabled:
@@ -278,7 +276,7 @@ class Runner:
         if self.gamd_dat_reporter_enabled:
             simulation = self.gamd_simulation.simulation
             output_directory = self.config.outputs.directory
-            gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.csv")
+            gamd_running_dat_filename = os.path.join(output_directory, "gamd-stats.dat")
             integrator = self.gamd_simulation.integrator
 
             #
@@ -297,6 +295,7 @@ class Runner:
         if self.gamd_logger_enabled:
             output_directory = self.config.outputs.directory
             gamd_log_filename = os.path.join(output_directory, "gamd.log")
+            stats_log_filename = os.path.join(output_directory, "stats.log")
             integrator = self.gamd_simulation.integrator
             simulation = self.gamd_simulation.simulation
             if restart:
@@ -304,7 +303,7 @@ class Runner:
             else:
                 write_mode = "w"
 
-            gamd_logger = GamdLogger(gamd_log_filename, write_mode, integrator,
+            gamd_logger = GamdLogger(gamd_log_filename, stats_log_filename, write_mode, integrator,
                                      simulation, self.gamd_simulation.first_boost_type,
                                      self.gamd_simulation.first_boost_group,
                                      self.gamd_simulation.second_boost_type,
@@ -453,6 +452,7 @@ class Runner:
 
                 if self.running_rates.is_save_step(step):
                     gamd_logger.write_to_gamd_log(step)
+                    gamd_logger.write_to_stats_log(step)
                     if step >= production_logging_start_step:
                         gamd_reweighting_logger.write_to_gamd_log(step)
 
